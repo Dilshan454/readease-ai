@@ -3,6 +3,7 @@ const connectDB = require("./config/db");
 require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
+const protectedRoutes = require("./routes/protectedRoutes");
 
 const app=express();
 
@@ -13,6 +14,7 @@ connectDB();
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api", protectedRoutes);
 
 app.get("/",(req,res)=>{
     res.send("Dyslexia Assistive App Backend is Running");
