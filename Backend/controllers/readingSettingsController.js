@@ -52,7 +52,35 @@ const createReadingSettings = async (req, res) => {
     }
 };
 
+const updateReadingSettings = async (req, res) => {
+    try {
+        const settings = await ReadingSettings.findOneAndUpdate(
+            { user: req.user.id },
+            { $set: req.body },
+            { new: true, runValidators: true }
+        );
+
+        if (!settings) {
+            return res.status(404).json({
+                message: "Reading settings not found"
+            });
+        }
+
+        res.status(200).json({
+            message: "Reading settings updated successfully",
+            settings
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Server error",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getReadingSettings,
-    createReadingSettings
+    createReadingSettings,
+    updateReadingSettings
 };
