@@ -7,6 +7,7 @@ const protectedRoutes = require("./routes/protectedRoutes");
 const readingSettingsRoutes = require("./routes/readingSettingsRoutes");
 const lessonRoutes = require("./routes/lessonRoutes");
 const exerciseRoutes = require("./routes/exerciseRoutes");
+const progressRoutes = require("./routes/progressRoutes");
 
 const app=express();
 
@@ -21,6 +22,7 @@ app.use("/api", protectedRoutes);
 app.use("/api/reading-settings", readingSettingsRoutes);
 app.use("/api/lessons", lessonRoutes);
 app.use("/api/exercises", exerciseRoutes);
+app.use("/api/progress", progressRoutes);
 
 app.get("/",(req,res)=>{
     res.send("Dyslexia Assistive App Backend is Running");
