@@ -1,7 +1,8 @@
 const {
-        simplifyText: simplifyWithAI,
-        generateExercises: generateExercisesWithAI
-    } = require("../services/geminiService");
+    simplifyText: simplifyWithAI,
+    generateExercises: generateExercisesWithAI,
+    generateSummary: generateSummaryWithAI
+} = require("../services/geminiService");
 
 const simplifyText = async (req, res) => {
     try {
@@ -58,7 +59,36 @@ const generateExercises = async (req, res) => {
     }
 };
 
+const generateSummary = async (req, res) => {
+    try {
+        const { text } = req.body;
+
+        if (!text) {
+            return res.status(400).json({
+                message: "Please provide text"
+            });
+        }
+
+        const summary = await generateSummaryWithAI(text);
+
+        res.status(200).json({
+            message: "Summary generated successfully",
+            originalText: text,
+            summary: summary
+        });
+
+    } catch (error) {
+        console.error("AI Summary Error:", error);
+
+        res.status(500).json({
+            message: "AI summary generation failed",
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     simplifyText,
-    generateExercises
+    generateExercises,
+    generateSummary
 };

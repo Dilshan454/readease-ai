@@ -68,7 +68,33 @@ ${text}
     return JSON.parse(cleanedOutput);
 };
 
+const generateSummary = async (text) => {
+    const prompt = `
+Create a short and simple summary of the following text for a person with dyslexia.
+
+Rules:
+- Use simple English words.
+- Use short sentences.
+- Include only the main ideas.
+- Keep the original meaning.
+- Do not add new information.
+- Avoid difficult words when possible.
+- Make the summary easy to read and understand.
+
+Text:
+${text}
+`;
+
+    const interaction = await ai.interactions.create({
+        model: "gemini-3.8-flash",
+        input: prompt
+    });
+
+    return interaction.output_text;
+};
+
 module.exports = {
     simplifyText,
-    generateExercises
+    generateExercises,
+    generateSummary
 };
