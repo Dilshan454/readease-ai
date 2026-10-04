@@ -93,8 +93,42 @@ ${text}
     return interaction.output_text;
 };
 
+const generateConversation = async (text) => {
+    const prompt = `
+Create a simple educational conversation based only on the following text.
+
+Rules:
+- Create a conversation between a teacher and a learner.
+- Use simple English.
+- Keep sentences short and clear.
+- Make it suitable for a person with dyslexia.
+- Use 6 to 8 dialogue lines.
+- Cover the main ideas from the text.
+- Do not add new information.
+- Make the conversation easy to read and understand.
+
+Return the conversation in this format:
+
+Teacher: ...
+Learner: ...
+Teacher: ...
+Learner: ...
+
+Text:
+${text}
+`;
+
+    const interaction = await ai.interactions.create({
+        model: "gemini-3.8-flash",
+        input: prompt
+    });
+
+    return interaction.output_text;
+};
+
 module.exports = {
     simplifyText,
     generateExercises,
-    generateSummary
+    generateSummary,
+    generateConversation
 };
