@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -6,7 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+
 import { useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function ReadingScreen() {
@@ -16,6 +19,9 @@ export default function ReadingScreen() {
   const [fontSize, setFontSize] = useState(20);
   const [lineSpacing, setLineSpacing] = useState(10);
   const [letterSpacing, setLetterSpacing] = useState(0);
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechSpeed, setSpeechSpeed] = useState(0.85);
 
   const getText = () => {
     if (language === "tamil") {
@@ -27,6 +33,71 @@ export default function ReadingScreen() {
     }
 
     return "Reading is a great way to learn new things. By reading a little every day, you can improve your vocabulary and understanding.";
+  };
+
+  const getSpeechLanguage = () => {
+    if (language === "tamil") {
+      return "ta-IN";
+    }
+
+    if (language === "sinhala") {
+      return "si-LK";
+    }
+
+    return "en-US";
+  };
+
+  const handleReadAloud = async () => {
+    const text = getText();
+
+    if (isSpeaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+      return;
+    }
+
+    setIsSpeaking(true);
+
+    Speech.speak(text, {
+      language: getSpeechLanguage(),
+      rate: speechSpeed,
+      pitch: 1.0,
+
+      onDone: () => {
+        setIsSpeaking(false);
+      },
+
+      onStopped: () => {
+        setIsSpeaking(false);
+      },
+
+      onError: () => {
+        setIsSpeaking(false);
+      },
+    });
+  };
+
+  const handleSpeedChange = async (speed: number) => {
+    setSpeechSpeed(speed);
+
+    // If speech is currently playing,
+    // stop it and restart using the new speed.
+    if (isSpeaking) {
+      await Speech.stop();
+      setIsSpeaking(false);
+    }
+  };
+
+  const getSpeedLabel = () => {
+    if (speechSpeed === 0.6) {
+      return getLabel("Slow", "மெதுவாக", "මන්දගාමී");
+    }
+
+    if (speechSpeed === 1.1) {
+      return getLabel("Fast", "வேகமாக", "වේගවත්");
+    }
+
+    return getLabel("Medium", "நடுத்தரம்", "මධ්‍යම");
   };
 
   const getTitle = () => {
@@ -107,19 +178,27 @@ export default function ReadingScreen() {
 
   return (
     <View style={styles.container}>
-
       {/* Header */}
+
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            Speech.stop();
+            setIsSpeaking(false);
+            router.back();
+          }}
         >
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
-            {getLabel("Reading", "வாசிப்பு", "කියවීම")}
+            {getLabel(
+              "Reading",
+              "வாசிப்பு",
+              "කියවීම"
+            )}
           </Text>
 
           <Text style={styles.headerSubtitle}>
@@ -140,10 +219,12 @@ export default function ReadingScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Intro */}
 
-        {/* Reading Header */}
         <View style={styles.introSection}>
-          <Text style={styles.title}>{getTitle()}</Text>
+          <Text style={styles.title}>
+            {getTitle()}
+          </Text>
 
           <Text style={styles.description}>
             {getDescription()}
@@ -151,8 +232,8 @@ export default function ReadingScreen() {
         </View>
 
         {/* Reading Card */}
-        <View style={styles.readingCard}>
 
+        <View style={styles.readingCard}>
           <View style={styles.lessonHeader}>
             <View style={styles.lessonBadge}>
               <Text style={styles.lessonBadgeText}>
@@ -180,28 +261,142 @@ export default function ReadingScreen() {
             {getText()}
           </Text>
 
-          {/* TTS Button */}
+          {/* Read Aloud */}
+
           <TouchableOpacity
-            style={styles.readButton}
+            style={[
+              styles.readButton,
+              isSpeaking && styles.stopButton,
+            ]}
             activeOpacity={0.8}
+            onPress={handleReadAloud}
           >
-            <Text style={styles.readButtonIcon}>🔊</Text>
+            <Text style={styles.readButtonIcon}>
+              {isSpeaking ? "⏹️" : "🔊"}
+            </Text>
 
             <Text style={styles.readButtonText}>
-              {getLabel(
-                "Read Aloud",
-                "சத்தமாக வாசிக்கவும்",
-                "ශබ්දයෙන් කියවන්න"
-              )}
+              {isSpeaking
+                ? getLabel(
+                    "Stop Reading",
+                    "வாசிப்பை நிறுத்தவும்",
+                    "කියවීම නවත්වන්න"
+                  )
+                : getLabel(
+                    "Read Aloud",
+                    "சத்தமாக வாசிக்கவும்",
+                    "ශබ්දයෙන් කියවන්න"
+                  )}
             </Text>
           </TouchableOpacity>
 
-          {/* Phonetic Button */}
+          {/* Speech Speed */}
+
+          <View style={styles.speedSection}>
+            <View style={styles.speedHeader}>
+              <Text style={styles.speedTitle}>
+                {getLabel(
+                  "Reading Speed",
+                  "வாசிப்பு வேகம்",
+                  "කියවීමේ වේගය"
+                )}
+              </Text>
+
+              <Text style={styles.speedValue}>
+                {getSpeedLabel()}
+              </Text>
+            </View>
+
+            <View style={styles.speedButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.speedButton,
+                  speechSpeed === 0.6 &&
+                    styles.selectedSpeedButton,
+                ]}
+                onPress={() =>
+                  handleSpeedChange(0.6)
+                }
+              >
+                <Text
+                  style={[
+                    styles.speedButtonText,
+                    speechSpeed === 0.6 &&
+                      styles.selectedSpeedText,
+                  ]}
+                >
+                  🐢{" "}
+                  {getLabel(
+                    "Slow",
+                    "மெது",
+                    "මන්දගාමී"
+                  )}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.speedButton,
+                  speechSpeed === 0.85 &&
+                    styles.selectedSpeedButton,
+                ]}
+                onPress={() =>
+                  handleSpeedChange(0.85)
+                }
+              >
+                <Text
+                  style={[
+                    styles.speedButtonText,
+                    speechSpeed === 0.85 &&
+                      styles.selectedSpeedText,
+                  ]}
+                >
+                  ▶️{" "}
+                  {getLabel(
+                    "Medium",
+                    "நடுத்தரம்",
+                    "මධ්‍යම"
+                  )}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.speedButton,
+                  speechSpeed === 1.1 &&
+                    styles.selectedSpeedButton,
+                ]}
+                onPress={() =>
+                  handleSpeedChange(1.1)
+                }
+              >
+                <Text
+                  style={[
+                    styles.speedButtonText,
+                    speechSpeed === 1.1 &&
+                      styles.selectedSpeedText,
+                  ]}
+                >
+                  ⚡{" "}
+                  {getLabel(
+                    "Fast",
+                    "வேகம்",
+                    "වේගවත්"
+                  )}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Phonetic Assistance */}
+
           <TouchableOpacity
             style={styles.phoneticButton}
             activeOpacity={0.8}
           >
-            <Text style={styles.phoneticIcon}>🗣️</Text>
+            <Text style={styles.phoneticIcon}>
+              🗣️
+            </Text>
 
             <Text style={styles.phoneticText}>
               {getLabel(
@@ -213,7 +408,8 @@ export default function ReadingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Reading Controls */}
+        {/* Reading Preferences */}
+
         <Text style={styles.sectionTitle}>
           {getLabel(
             "Reading Preferences",
@@ -223,6 +419,7 @@ export default function ReadingScreen() {
         </Text>
 
         {/* Font Size */}
+
         <View style={styles.controlCard}>
           <View style={styles.controlHeader}>
             <View>
@@ -262,6 +459,7 @@ export default function ReadingScreen() {
         </View>
 
         {/* Line Spacing */}
+
         <View style={styles.controlCard}>
           <View style={styles.controlHeader}>
             <View>
@@ -301,6 +499,7 @@ export default function ReadingScreen() {
         </View>
 
         {/* Letter Spacing */}
+
         <View style={styles.controlCard}>
           <View style={styles.controlHeader}>
             <View>
@@ -340,6 +539,7 @@ export default function ReadingScreen() {
         </View>
 
         {/* Background */}
+
         <Text style={styles.sectionTitle}>
           {getLabel(
             "Reading Background",
@@ -394,9 +594,12 @@ export default function ReadingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Helpful Tip */}
+        {/* Reading Tip */}
+
         <View style={styles.tipCard}>
-          <Text style={styles.tipIcon}>💡</Text>
+          <Text style={styles.tipIcon}>
+            💡
+          </Text>
 
           <View style={styles.tipContent}>
             <Text style={styles.tipTitle}>
@@ -418,7 +621,6 @@ export default function ReadingScreen() {
         </View>
 
         <View style={styles.bottomSpace} />
-
       </ScrollView>
     </View>
   );
@@ -554,7 +756,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 14,
+  },
+
+  stopButton: {
+    backgroundColor: "#B84A4A",
   },
 
   readButtonIcon: {
@@ -566,6 +772,60 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
+  },
+
+  speedSection: {
+    marginBottom: 16,
+  },
+
+  speedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+
+  speedTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#374151",
+  },
+
+  speedValue: {
+    fontSize: 12,
+    color: "#3157A4",
+    fontWeight: "700",
+  },
+
+  speedButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  speedButton: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+
+  selectedSpeedButton: {
+    backgroundColor: "#EAF0FF",
+    borderColor: "#3157A4",
+  },
+
+  speedButtonText: {
+    color: "#4B5563",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  selectedSpeedText: {
+    color: "#3157A4",
   },
 
   phoneticButton: {
