@@ -1,4 +1,5 @@
 import React from "react";
+
 import {
   View,
   Text,
@@ -6,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -60,6 +62,7 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
+
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>
@@ -77,6 +80,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Progress Card */}
+
       <View style={styles.progressCard}>
         <View style={styles.progressHeader}>
           <View>
@@ -116,6 +120,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Learning Features */}
+
       <Text style={styles.sectionTitle}>
         {getLabel(
           "Learning Features",
@@ -125,8 +130,8 @@ export default function HomeScreen() {
       </Text>
 
       <View style={styles.featureGrid}>
-
         {/* Reading */}
+
         <TouchableOpacity
           style={styles.featureCard}
           activeOpacity={0.8}
@@ -159,6 +164,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* AI Support */}
+
         <TouchableOpacity
           style={styles.featureCard}
           activeOpacity={0.8}
@@ -190,6 +196,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Games */}
+
         <TouchableOpacity
           style={styles.featureCard}
           activeOpacity={0.8}
@@ -221,6 +228,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* Progress */}
+
         <TouchableOpacity
           style={styles.featureCard}
           activeOpacity={0.8}
@@ -253,6 +261,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Recommended Section */}
+
       <View style={styles.recommendedHeader}>
         <Text style={styles.sectionTitle}>
           {getLabel(
@@ -262,19 +271,28 @@ export default function HomeScreen() {
           )}
         </Text>
 
-        <Text style={styles.seeAll}>
-          {getLabel(
-            "See All",
-            "அனைத்தும்",
-            "සියල්ල"
-          )}
-        </Text>
+        {/* See All → Lessons */}
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push("/lessons")}
+        >
+          <Text style={styles.seeAll}>
+            {getLabel(
+              "See All",
+              "அனைத்தும்",
+              "සියල්ල"
+            )}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Recommended Lesson */}
+
       <TouchableOpacity
         style={styles.lessonCard}
         activeOpacity={0.85}
+        onPress={() => router.push("/lessons")}
       >
         <View style={styles.lessonIcon}>
           <Text style={styles.lessonEmoji}>

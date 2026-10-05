@@ -29,6 +29,16 @@ export default function RootLayout() {
           name="home"
           options={{ headerShown: false }}
         />
+
+        <Stack.Screen
+          name="reading"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="lessons"
+          options={{ headerShown: false }}
+        />
       </Stack>
     </LanguageProvider>
   );
