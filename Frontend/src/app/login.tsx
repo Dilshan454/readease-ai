@@ -18,6 +18,12 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const handleLogin = () => {
+    // Temporary navigation for frontend testing.
+    // Backend login will be connected later.
+    router.push("/home");
+  };
+
   return (
     <View style={styles.container}>
 
@@ -91,6 +97,7 @@ export default function LoginScreen() {
       <TouchableOpacity
         style={styles.loginButton}
         activeOpacity={0.8}
+        onPress={handleLogin}
       >
         <Text style={styles.loginButtonText}>
           {t.login}

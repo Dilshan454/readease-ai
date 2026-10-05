@@ -24,6 +24,11 @@ export default function RootLayout() {
           name="register"
           options={{ headerShown: false }}
         />
+
+        <Stack.Screen
+          name="home"
+          options={{ headerShown: false }}
+        />
       </Stack>
     </LanguageProvider>
   );
