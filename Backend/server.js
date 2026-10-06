@@ -11,6 +11,7 @@ const progressRoutes = require("./routes/progressRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const phoneticRoutes = require("./routes/phoneticRoutes");
 const gamificationRoutes = require("./routes/gamificationRoutes");
+const recommendationRoutes = require("./routes/recommendationRoutes");
 
 const app=express();
 
@@ -29,6 +30,7 @@ app.use("/api/progress", progressRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/phonetic", phoneticRoutes);
 app.use("/api/gamification", gamificationRoutes);
+app.use("/api/recommendations", recommendationRoutes);
 
 app.get("/",(req,res)=>{
     res.send("Dyslexia Assistive App Backend is Running");
