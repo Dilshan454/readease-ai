@@ -6,10 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  TextInput,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 
 import { useRouter } from "expo-router";
 import * as Speech from "expo-speech";
+import * as DocumentPicker from "expo-document-picker";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function ReadingScreen() {
@@ -22,6 +26,10 @@ export default function ReadingScreen() {
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechSpeed, setSpeechSpeed] = useState(0.85);
+  const [pastedText, setPastedText] = useState("");
+  const [uploadedText, setUploadedText] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [isExtracting, setIsExtracting] = useState(false);
 
   const getText = () => {
     if (language === "tamil") {
@@ -33,6 +41,11 @@ export default function ReadingScreen() {
     }
 
     return "Reading is a great way to learn new things. By reading a little every day, you can improve your vocabulary and understanding.";
+  };
+
+  const getCurrentReadingText = () => {
+    const suppliedText = pastedText.trim() || uploadedText.trim();
+    return suppliedText || getText();
   };
 
   const getSpeechLanguage = () => {
@@ -47,8 +60,76 @@ export default function ReadingScreen() {
     return "en-US";
   };
 
+  const handlePickAndExtractFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/pdf",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/msword",
+          "text/plain",
+          "image/*",
+        ],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+      const file = result.assets[0];
+      const maxBytes = 10 * 1024 * 1024;
+      if (file.size && file.size > maxBytes) {
+        Alert.alert(
+          getLabel("File too large", "கோப்பு மிகப் பெரியது", "ගොනුව විශාල වැඩියි"),
+          getLabel("Please choose a file smaller than 10 MB.", "10 MB-ஐ விடச் சிறிய கோப்பைத் தேர்ந்தெடுக்கவும்.", "කරුණාකර 10 MB ට අඩු ගොනුවක් තෝරන්න.")
+        );
+        return;
+      }
+
+      setIsExtracting(true);
+      const formData = new FormData();
+      formData.append("file", {
+        uri: file.uri,
+        name: file.name || "reading-upload",
+        type: file.mimeType || "application/octet-stream",
+      } as any);
+
+      // For a physical phone, set EXPO_PUBLIC_API_URL to your computer's LAN IP,
+      // for example http://192.168.1.10:5000. Android emulator may use 10.0.2.2.
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiBaseUrl}/api/text-extraction/extract`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Text extraction failed.");
+      const extracted = typeof data.text === "string" ? data.text.trim() : "";
+      if (!extracted) {
+        Alert.alert(
+          getLabel("No text found", "உரை கிடைக்கவில்லை", "පාඨයක් හමු වුණේ නැහැ"),
+          getLabel("Try a clearer image or a document that contains selectable text.", "தெளிவான படத்தை அல்லது உரை உள்ள ஆவணத்தை முயற்சிக்கவும்.", "වඩා පැහැදිලි පින්තූරයක් හෝ text තිබෙන ලේඛනයක් උත්සාහ කරන්න.")
+        );
+        return;
+      }
+      setUploadedText(extracted);
+      setPastedText("");
+      setSelectedFileName(file.name || "Uploaded file");
+      Alert.alert(
+        getLabel("Text ready", "உரை தயார்", "පාඨය සූදානම්"),
+        getLabel("The extracted text is ready to read aloud.", "பெறப்பட்ட உரையை இப்போது சத்தமாக வாசிக்கலாம்.", "ලබාගත් පාඨය දැන් ශබ්දයෙන් කියවිය හැකිය.")
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      Alert.alert(
+        getLabel("Could not read file", "கோப்பைப் படிக்க முடியவில்லை", "ගොනුව කියවිය නොහැක"),
+        `${message}\n\n${getLabel("Check that the backend is running and EXPO_PUBLIC_API_URL is correct.", "Backend இயங்குகிறதா மற்றும் EXPO_PUBLIC_API_URL சரியா என்பதைச் சரிபார்க்கவும்.", "Backend එක ක්‍රියාත්මකද සහ EXPO_PUBLIC_API_URL නිවැරදිද පරීක්ෂා කරන්න.")}`
+      );
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
   const handleReadAloud = async () => {
-    const text = getText();
+    const text = getCurrentReadingText();
 
     if (isSpeaking) {
       await Speech.stop();
@@ -231,6 +312,56 @@ export default function ReadingScreen() {
           </Text>
         </View>
 
+        {/* Upload a document or paste text */}
+        <View style={styles.inputCard}>
+          <Text style={styles.inputTitle}>
+            {getLabel("Upload or paste a paragraph", "ஒரு பத்தியைப் பதிவேற்றவும் அல்லது ஒட்டவும்", "ජේදයක් upload කරන්න හෝ paste කරන්න")}
+          </Text>
+          <Text style={styles.inputHint}>
+            {getLabel("Supports PDF, Word, TXT and images. The app extracts the text before reading.", "PDF, Word, TXT மற்றும் படங்களை ஆதரிக்கிறது.", "PDF, Word, TXT සහ පින්තූර සහාය දක්වයි. කියවීමට පෙර පාඨය ලබාගනී.")}
+          </Text>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            activeOpacity={0.8}
+            onPress={handlePickAndExtractFile}
+            disabled={isExtracting}
+          >
+            {isExtracting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.uploadButtonText}>📎  {getLabel("Choose a file", "கோப்பைத் தேர்ந்தெடுக்கவும்", "ගොනුවක් තෝරන්න")}</Text>}
+          </TouchableOpacity>
+          {selectedFileName ? <Text style={styles.fileName}>{selectedFileName}</Text> : null}
+          <Text style={styles.orText}>{getLabel("OR paste text below", "அல்லது கீழே உரையை ஒட்டவும்", "නැතිනම් පහතින් text paste කරන්න")}</Text>
+          <TextInput
+            style={[styles.pasteInput, { fontSize: Math.min(fontSize, 24), lineHeight: Math.min(fontSize, 24) + lineSpacing, letterSpacing }]}
+            value={pastedText}
+            onChangeText={(value) => {
+              setPastedText(value);
+              if (value.trim()) {
+                setUploadedText("");
+                setSelectedFileName("");
+              }
+            }}
+            placeholder={getLabel("Paste your paragraph here...", "உங்கள் பத்தியை இங்கே ஒட்டவும்...", "ඔබගේ ජේදය මෙතැන paste කරන්න...")}
+            placeholderTextColor="#8A94A6"
+            multiline
+            textAlignVertical="top"
+            accessibilityLabel={getLabel("Paragraph text input", "பத்தி உரை உள்ளீடு", "ජේද පෙළ ඇතුළත් කිරීම")}
+          />
+          {(pastedText.trim() || uploadedText.trim()) ? (
+            <TouchableOpacity
+              style={styles.clearTextButton}
+              onPress={() => {
+                setPastedText("");
+                setUploadedText("");
+                setSelectedFileName("");
+                Speech.stop();
+                setIsSpeaking(false);
+              }}
+            >
+              <Text style={styles.clearTextButtonText}>{getLabel("Clear uploaded/pasted text", "பதிவேற்றிய/ஒட்டிய உரையை அழிக்கவும்", "upload/paste කළ පාඨය ඉවත් කරන්න")}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         {/* Reading Card */}
 
         <View style={styles.readingCard}>
@@ -258,7 +389,7 @@ export default function ReadingScreen() {
               },
             ]}
           >
-            {getText()}
+            {getCurrentReadingText()}
           </Text>
 
           {/* Read Aloud */}
@@ -741,6 +872,72 @@ const styles = StyleSheet.create({
 
   bookIcon: {
     fontSize: 25,
+  },
+
+  inputCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#E7EBF1",
+    marginBottom: 20,
+  },
+  inputTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#1F2937",
+    marginBottom: 6,
+  },
+  inputHint: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#6B7280",
+    marginBottom: 14,
+  },
+  uploadButton: {
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: "#3157A4",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  uploadButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  fileName: {
+    fontSize: 12,
+    color: "#3157A4",
+    marginTop: 4,
+  },
+  orText: {
+    fontSize: 12,
+    color: "#6B7280",
+    textAlign: "center",
+    marginVertical: 12,
+  },
+  pasteInput: {
+    minHeight: 120,
+    maxHeight: 260,
+    borderWidth: 1,
+    borderColor: "#D8DEE9",
+    borderRadius: 12,
+    padding: 12,
+    color: "#1F2937",
+    backgroundColor: "#FBFCFE",
+  },
+  clearTextButton: {
+    alignSelf: "flex-start",
+    marginTop: 10,
+    paddingVertical: 7,
+  },
+  clearTextButtonText: {
+    color: "#B42318",
+    fontSize: 13,
+    fontWeight: "700",
   },
 
   readingText: {

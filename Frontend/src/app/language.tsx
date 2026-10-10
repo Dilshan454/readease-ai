@@ -129,9 +129,9 @@ export default function LanguageScreen() {
         </Text>
       </TouchableOpacity>
 
-      {/* Note */}
+      {/* Note - Translated dynamically */}
       <Text style={styles.note}>
-        You can change your language later in Settings.
+        {t.changeLanguageLater || "You can change your language later in Settings."}
       </Text>
 
     </View>
