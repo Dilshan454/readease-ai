@@ -23,8 +23,9 @@ const userSchema = new mongoose.Schema(
             default: "learner"
         },
 
-        language: {
+       language: {
             type: String,
+            enum: ["English", "Sinhala", "Tamil"],
             default: "English"
         }
     },
