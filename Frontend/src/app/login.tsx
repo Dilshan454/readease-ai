@@ -1,3 +1,6 @@
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = `${API_BASE_URL}/auth/login`;
+
 import React, { useState } from "react";
 import {
   View,
@@ -5,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
@@ -19,9 +23,36 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = () => {
-    // Temporary navigation for frontend testing.
-    // Backend login will be connected later.
-    router.push("/home");
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter email and password");
+      return;
+    }
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log("Login Success Data:", data);
+        Alert.alert("Success", "Login Successful!");
+        router.push("/home"); 
+      } else {
+        Alert.alert("Login Failed", data.message || "Invalid credentials");
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+      Alert.alert("Error", "Cannot connect to backend server");
+    }
   };
 
   return (
