@@ -1,4 +1,5 @@
-const express=require("express");
+
+const express = require("express");
 const connectDB = require("./config/db");
 require("dotenv").config();
 
@@ -12,9 +13,14 @@ const aiRoutes = require("./routes/aiRoutes");
 const phoneticRoutes = require("./routes/phoneticRoutes");
 const gamificationRoutes = require("./routes/gamificationRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
+
+
 const textExtractionRoutes = require("./routes/textExtractionRoutes");
 
-const app=express();
+
+const languageRoutes = require("./routes/languageRoutes");
+
+const app = express();
 
 const PORT = process.env.PORT || 5000;
 
@@ -32,12 +38,15 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/phonetic", phoneticRoutes);
 app.use("/api/gamification", gamificationRoutes);
 app.use("/api/recommendations", recommendationRoutes);
-app.use("/api/text-extraction", textExtractionRoutes);
 
-app.get("/",(req,res)=>{
+
+app.use("/api/text-extraction", textExtractionRoutes);
+app.use("/api/language", languageRoutes);
+
+app.get("/", (req, res) => {
     res.send("Dyslexia Assistive App Backend is Running");
 });
 
-app.listen(PORT,()=>{
+app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-})
+});
