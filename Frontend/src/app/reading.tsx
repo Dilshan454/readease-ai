@@ -31,6 +31,9 @@ export default function ReadingScreen() {
   const [selectedFileName, setSelectedFileName] = useState("");
   const [isExtracting, setIsExtracting] = useState(false);
 
+  const [summaryText, setSummaryText] = useState("");
+  const [isSummarizing, setIsSummarizing] = useState(false);
+
   const getText = () => {
     if (language === "tamil") {
       return "வாசிப்பு என்பது புதிய விஷயங்களை அறிந்து கொள்வதற்கான ஒரு சிறந்த வழியாகும். தினமும் சிறிது நேரம் வாசிப்பதன் மூலம் உங்கள் சொற்களஞ்சியத்தையும் புரிந்துகொள்ளும் திறனையும் மேம்படுத்தலாம்.";
@@ -125,6 +128,37 @@ export default function ReadingScreen() {
       );
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    const textToSummarize = getCurrentReadingText();
+    if (!textToSummarize) return;
+
+    try {
+      setIsSummarizing(true);
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+      
+      const response = await fetch(`${apiBaseUrl}/api/documents/summarize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: textToSummarize }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Summarization failed");
+
+      setSummaryText(data.summary || "");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      Alert.alert(
+        getLabel("Summarization Error", "சுருக்கம் தோல்வி", "සාරාංශ කිරීම අසාර්ථකයි"),
+        message
+      );
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -353,6 +387,7 @@ export default function ReadingScreen() {
                 setPastedText("");
                 setUploadedText("");
                 setSelectedFileName("");
+                setSummaryText("");
                 Speech.stop();
                 setIsSpeaking(false);
               }}
