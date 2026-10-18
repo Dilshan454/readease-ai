@@ -5,9 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const REGISTER_API_URL = `${API_BASE_URL}/auth/register`;
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -25,6 +29,49 @@ export default function RegisterScreen() {
 
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
+
+
+  const handleRegister = async () => {
+    if (!fullName || !email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+
+    try {
+      const response = await fetch(REGISTER_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: fullName,
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert("Success", "Account created successfully!");
+        router.push("/login");
+      } else {
+        Alert.alert(
+          "Registration Failed",
+          data.message || "Could not register user"
+        );
+      }
+    } catch (error) {
+      console.error("Register Error:", error);
+      Alert.alert("Error", "Cannot connect to backend server");
+    }
+  };
+
 
   return (
     <View style={styles.container}>
@@ -140,6 +187,7 @@ export default function RegisterScreen() {
       <TouchableOpacity
         style={styles.registerButton}
         activeOpacity={0.8}
+        onPress={handleRegister}
       >
         <Text style={styles.registerButtonText}>
           {t.createAccount}
