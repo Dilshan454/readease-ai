@@ -19,6 +19,7 @@ const textExtractionRoutes = require("./routes/textExtractionRoutes");
 
 
 const languageRoutes = require("./routes/languageRoutes");
+const documentRoutes = require('./routes/documentRoutes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use("/api/recommendations", recommendationRoutes);
 
 app.use("/api/text-extraction", textExtractionRoutes);
 app.use("/api/language", languageRoutes);
+app.use('/api/documents', documentRoutes);
 
 app.get("/", (req, res) => {
     res.send("Dyslexia Assistive App Backend is Running");
