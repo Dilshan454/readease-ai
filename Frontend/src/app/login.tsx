@@ -21,12 +21,15 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async() => {
     if (!email || !password) {
       Alert.alert("Error", "Please enter email and password");
       return;
     }
+
+    setLoading(true);
 
     try {
       const response = await fetch(API_URL, {
@@ -52,6 +55,8 @@ export default function LoginScreen() {
     } catch (error) {
       console.error("Login Error:", error);
       Alert.alert("Error", "Cannot connect to backend server");
+    }finally {
+      setLoading(false); 
     }
   };
 

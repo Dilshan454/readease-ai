@@ -79,7 +79,7 @@ const loginUser = async (req, res) => {
 
         const token = jwt.sign(
             { id: user._id, role: user.role },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET|| "readease_secret_key_fallback",
             { expiresIn: "7d" }
         );
 
