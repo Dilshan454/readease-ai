@@ -199,6 +199,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.featureCard}
+          onPress={() => router.push("/game")}
           activeOpacity={0.8}
         >
           <View
