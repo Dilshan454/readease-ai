@@ -34,6 +34,12 @@ export default function AiSupportScreen() {
     },
   ]);
 
+  const getLabel = (english: string, tamil: string, sinhala: string) => {
+    if (language === "tamil") return tamil;
+    if (language === "sinhala") return sinhala;
+    return english;
+  };
+
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return;
 
@@ -53,10 +59,9 @@ export default function AiSupportScreen() {
     }, 100);
 
     try {
-      // Connect to your Node.js/Express Backend API
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.20.10.9:5000/api";
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.20.10.9:5000";
       
-      const response = await fetch(`${baseUrl}/ai/chat`, {
+      const response = await fetch(`${apiBaseUrl}/api/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -73,12 +78,11 @@ export default function AiSupportScreen() {
       if (data && data.reply) {
         aiResponseText = data.reply;
       } else {
-        aiResponseText =
-          language === "sinhala"
-            ? "සමාවෙන්න, නිසි පිළිතුරක් ලබා ගැනීමට නොහැකි විය."
-            : language === "tamil"
-            ? "மன்னிக்கவும், சரியான பதிலை பெற முடியவில்லை."
-            : "Sorry, I couldn't process a response right now.";
+        aiResponseText = getLabel(
+          "Sorry, I couldn't process a response right now.",
+          "மன்னிக்கவும், சரியான பதிலை பெற முடியவில்லை.",
+          "සමාවෙන්න, නිසි පිළිතුරක් ලබා ගැනීමට නොහැකි විය."
+        );
       }
 
       const aiReply = {
@@ -94,12 +98,11 @@ export default function AiSupportScreen() {
       const errorReply = {
         id: (Date.now() + 1).toString(),
         sender: "ai",
-        text:
-          language === "sinhala"
-            ? "සර්වර් එක සමඟ සම්බන්ධ වීමේ දෝෂයක් ඇත. කරුණාකර ජාල සබඳතාව පරීක්ෂා කරන්න."
-            : language === "tamil"
-            ? "சேவையகத்துடன் இணைப்பதில் பிழை ஏற்பட்டது. தயவுசெய்து உங்கள் பிணைய இணைப்பைச் சரிபார்க்கவும்."
-            : "Unable to connect to the server. Please check your network connection.",
+        text: getLabel(
+          "Unable to connect to the server. Please check your network connection.",
+          "சேவையகத்துடன் இணைப்பதில் பிழை ஏற்பட்டது. தயவுசெய்து உங்கள் பிணைய இணைப்பைச் சரிபார்க்கவும்.",
+          "සර්වර් එක සමඟ සම්බන්ධ වීමේ දෝෂයක් ඇත. කරුණාකර ජාල සබඳතාව පරීක්ෂා කරන්න."
+        ),
       };
 
       setMessages((prev) => [...prev, errorReply]);
@@ -111,18 +114,12 @@ export default function AiSupportScreen() {
     }
   };
 
-  const getLabel = (english: string, tamil: string, sinhala: string) => {
-    if (language === "tamil") return tamil;
-    if (language === "sinhala") return sinhala;
-    return english;
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      {/* Top Header with Navigation Fallback */}
+      {/* Consistent Header across screens */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
@@ -136,10 +133,17 @@ export default function AiSupportScreen() {
         >
           <Text style={styles.backButtonText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {getLabel("AI Support", "AI உதவி", "AI සහාය")}
-        </Text>
-        <View style={{ width: 36 }} />
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>
+            {getLabel("AI Support Assistant", "AI உதவி", "AI සහායකයා")}
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            {getLabel("Ask reading questions & simplify text", "கேள்விகளைக் கேளுங்கள்", "කියවීම සහ තේරුම් ගැනීමට උදව් අසන්න")}
+          </Text>
+        </View>
+        <View style={styles.aiIconBadge}>
+          <Text style={{ fontSize: 18 }}>🤖</Text>
+        </View>
       </View>
 
       {/* Chat Messages */}
@@ -181,14 +185,14 @@ export default function AiSupportScreen() {
           </View>
         ))}
 
-        {/* Loading Indicator for AI Thinking State */}
+        {/* Loading State */}
         {isLoading && (
           <View style={[styles.messageRow, styles.aiRow]}>
             <View style={styles.aiAvatar}>
               <Text style={styles.aiAvatarText}>🤖</Text>
             </View>
             <View style={[styles.messageBubble, styles.aiBubble, styles.loadingBubble]}>
-              <ActivityIndicator size="small" color="#4F46E5" />
+              <ActivityIndicator size="small" color="#3157A4" />
             </View>
           </View>
         )}
@@ -229,153 +233,88 @@ export default function AiSupportScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
+  container: { flex: 1, backgroundColor: "#F7F9FC" },
   header: {
+    paddingTop: 55,
+    paddingHorizontal: 20,
+    paddingBottom: 18,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 50,
-    paddingBottom: 14,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F7F9FC",
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: "#E5E7EB",
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F1F5F9",
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  backButtonText: { fontSize: 32, color: "#3157A4", marginTop: -3 },
+  headerTitleContainer: { flex: 1, marginLeft: 14 },
+  headerTitle: { fontSize: 18, fontWeight: "800", color: "#1F2937" },
+  headerSubtitle: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  aiIconBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#EAF0FF",
     alignItems: "center",
     justifyContent: "center",
   },
-  backButtonText: {
-    fontSize: 26,
-    color: "#334155",
-    marginTop: -2,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#1E293B",
-    letterSpacing: 0.3,
-  },
-  chatContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  messageRow: {
-    flexDirection: "row",
-    marginBottom: 18,
-    alignItems: "flex-start",
-  },
-  userRow: {
-    justifyContent: "flex-end",
-  },
-  aiRow: {
-    justifyContent: "flex-start",
-  },
+  chatContainer: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
+  messageRow: { flexDirection: "row", marginBottom: 16, alignItems: "flex-start" },
+  userRow: { justifyContent: "flex-end" },
+  aiRow: { justifyContent: "flex-start" },
   aiAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#EEF2FF",
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    backgroundColor: "#EAF0FF",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
-    marginTop: 2,
     borderWidth: 1,
-    borderColor: "#E0E7FF",
+    borderColor: "#D0DDFB",
   },
-  aiAvatarText: {
-    fontSize: 16,
-  },
-  messageBubble: {
-    maxWidth: "80%",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  loadingBubble: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-  },
-  userBubble: {
-    backgroundColor: "#4F46E5",
-    borderBottomRightRadius: 4,
-  },
+  aiAvatarText: { fontSize: 18 },
+  messageBubble: { maxWidth: "80%", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16 },
+  loadingBubble: { paddingVertical: 12, paddingHorizontal: 18 },
+  userBubble: { backgroundColor: "#3157A4", borderBottomRightRadius: 4 },
   aiBubble: {
     backgroundColor: "#FFFFFF",
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    borderColor: "#E5E7EB",
   },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  userText: {
-    color: "#FFFFFF",
-    fontWeight: "500",
-  },
-  aiText: {
-    color: "#1E293B",
-  },
+  messageText: { fontSize: 15, lineHeight: 22 },
+  userText: { color: "#FFFFFF", fontWeight: "600" },
+  aiText: { color: "#1F2937", fontWeight: "500" },
   inputWrapper: {
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === "ios" ? 25 : 16,
     paddingTop: 10,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#F7F9FC",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    borderColor: "#E5E7EB",
   },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: "#1E293B",
-    maxHeight: 100,
-    paddingTop: 6,
-    paddingBottom: 6,
-  },
-  sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-  },
-  sendButtonActive: {
-    backgroundColor: "#4F46E5",
-  },
-  sendButtonDisabled: {
-    backgroundColor: "#E2E8F0",
-  },
-  sendIcon: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  input: { flex: 1, fontSize: 15, color: "#1F2937", maxHeight: 100, paddingTop: 8, paddingBottom: 8 },
+  sendButton: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", marginLeft: 8 },
+  sendButtonActive: { backgroundColor: "#3157A4" },
+  sendButtonDisabled: { backgroundColor: "#E5E7EB" },
+  sendIcon: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
 });

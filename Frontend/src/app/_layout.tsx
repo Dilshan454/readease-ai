@@ -54,6 +54,11 @@ export default function RootLayout() {
           name="progress"
           options={{ headerShown: false }}
         />
+
+        <Stack.Screen
+          name="aiSupport"
+          options={{ headerShown: false }}
+        />
       </Stack>
     </LanguageProvider>
   );
