@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 const API_URL = `${API_BASE_URL}/auth/login`;
 
@@ -46,6 +47,7 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (response.ok) {
+        await AsyncStorage.setItem("authToken", data.token);
         console.log("Login Success Data:", data);
         Alert.alert("Success", "Login Successful!");
         router.push("/home"); 
