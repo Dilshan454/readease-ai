@@ -1,281 +1,316 @@
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const API_URL = `${API_BASE_URL}/auth/login`;
-
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
 
-export default function LoginScreen() {
+export default function AiSupportScreen() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const scrollViewRef = useRef<ScrollView | null>(null);
 
-  const { t } = useLanguage();
+  const [isLoading, setIsLoading] = useState(false);
+  const [inputText, setInputText] = useState("");
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      id: "1",
+      sender: "ai",
+      text:
+        language === "tamil"
+          ? "வணக்கம்! நான் உங்கள் AI உதவியாளன். இன்றைக்கு என்ன படிக்க உதவ வேண்டும்?"
+          : language === "sinhala"
+          ? "ආයුබෝවන්! මම ඔබේ AI සහායකයා. අද ඔබට මොනවාද කියවන්න උදව් ඕනේ?"
+          : "Hello! I am your AI assistant. How can I help with your reading today?",
+    },
+  ]);
 
-  const handleLogin = async() => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
-      return;
-    }
+  const getLabel = (english: string, tamil: string, sinhala: string) => {
+    if (language === "tamil") return tamil;
+    if (language === "sinhala") return sinhala;
+    return english;
+  };
 
-    setLoading(true);
+  const handleSend = async () => {
+    if (!inputText.trim() || isLoading) return;
+
+    const userText = inputText.trim();
+    const userMessage = {
+      id: Date.now().toString(),
+      sender: "user",
+      text: userText,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputText("");
+    setIsLoading(true);
+
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
 
     try {
-      const response = await fetch(API_URL, {
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.20.10.9:5000";
+      
+      const response = await fetch(`${apiBaseUrl}/api/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: email,
-          password: password,
+          message: userText,
+          language: language,
         }),
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        console.log("Login Success Data:", data);
-        Alert.alert("Success", "Login Successful!");
-        router.push("/home"); 
+      let aiResponseText = "";
+      if (data && data.reply) {
+        aiResponseText = data.reply;
       } else {
-        Alert.alert("Login Failed", data.message || "Invalid credentials");
+        aiResponseText = getLabel(
+          "Sorry, I couldn't process a response right now.",
+          "மன்னிக்கவும், சரியான பதிலை பெற முடியவில்லை.",
+          "සමාවෙන්න, නිසි පිළිතුරක් ලබා ගැනීමට නොහැකි විය."
+        );
       }
+
+      const aiReply = {
+        id: (Date.now() + 1).toString(),
+        sender: "ai",
+        text: aiResponseText,
+      };
+
+      setMessages((prev) => [...prev, aiReply]);
     } catch (error) {
-      console.error("Login Error:", error);
-      Alert.alert("Error", "Cannot connect to backend server");
-    }finally {
-      setLoading(false); 
+      console.error("Real AI Chat Fetch Error:", error);
+
+      const errorReply = {
+        id: (Date.now() + 1).toString(),
+        sender: "ai",
+        text: getLabel(
+          "Unable to connect to the server. Please check your network connection.",
+          "சேவையகத்துடன் இணைப்பதில் பிழை ஏற்பட்டது. தயவுசெய்து உங்கள் பிணைய இணைப்பைச் சரிபார்க்கவும்.",
+          "සර්වර් එක සමඟ සම්බන්ධ වීමේ දෝෂයක් ඇත. කරුණාකර ජාල සබඳතාව පරීක්ෂා කරන්න."
+        ),
+      };
+
+      setMessages((prev) => [...prev, errorReply]);
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
   };
 
   return (
-    <View style={styles.container}>
-
-      {/* Logo */}
-      <Text style={styles.logo}>ReadEase</Text>
-
-      {/* Heading */}
-      <View style={styles.headingContainer}>
-        <Text style={styles.title}>
-          {t.welcomeBack}
-        </Text>
-
-        <Text style={styles.subtitle}>
-          {t.continueLearning}
-        </Text>
-      </View>
-
-      {/* Email */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>
-          {t.email}
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder={t.enterEmail}
-          placeholderTextColor="#9CA3AF"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
-
-      {/* Password */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>
-          {t.password}
-        </Text>
-
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder={t.enterPassword}
-            placeholderTextColor="#9CA3AF"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-          />
-
-          <TouchableOpacity
-            onPress={() =>
-              setShowPassword(!showPassword)
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push("/");
             }
-          >
-            <Text style={styles.showText}>
-              {showPassword ? t.hide : t.show}
-            </Text>
-          </TouchableOpacity>
+          }}
+          style={styles.backButton}
+        >
+          <Text style={styles.backButtonText}>‹</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>
+            {getLabel("AI Support Assistant", "AI உதவி", "AI සහායකයා")}
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            {getLabel("Ask reading questions & simplify text", "கேள்விகளைக் கேளுங்கள்", "කියවීම සහ තේරුම් ගැනීමට උදව් අසන්න")}
+          </Text>
+        </View>
+        <View style={styles.aiIconBadge}>
+          <Text style={{ fontSize: 18 }}>🤖</Text>
         </View>
       </View>
 
-      {/* Forgot Password */}
-      <TouchableOpacity style={styles.forgotContainer}>
-        <Text style={styles.forgotText}>
-          {t.forgotPassword}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Login Button */}
-      <TouchableOpacity
-        style={styles.loginButton}
-        activeOpacity={0.8}
-        onPress={handleLogin}
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.chatContainer}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
-        <Text style={styles.loginButtonText}>
-          {t.login}
-        </Text>
-      </TouchableOpacity>
+        {messages.map((msg) => (
+          <View
+            key={msg.id}
+            style={[
+              styles.messageRow,
+              msg.sender === "user" ? styles.userRow : styles.aiRow,
+            ]}
+          >
+            {msg.sender === "ai" && (
+              <View style={styles.aiAvatar}>
+                <Text style={styles.aiAvatarText}>🤖</Text>
+              </View>
+            )}
 
-      {/* Register */}
-      <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>
-          {t.dontHaveAccount}{" "}
-        </Text>
+            <View
+              style={[
+                styles.messageBubble,
+                msg.sender === "user" ? styles.userBubble : styles.aiBubble,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.messageText,
+                  msg.sender === "user" ? styles.userText : styles.aiText,
+                ]}
+              >
+                {msg.text}
+              </Text>
+            </View>
+          </View>
+        ))}
 
-        <TouchableOpacity
-          onPress={() => router.push("/register")}
-        >
-          <Text style={styles.registerLink}>
-            {t.register}
-          </Text>
-        </TouchableOpacity>
+        {isLoading && (
+          <View style={[styles.messageRow, styles.aiRow]}>
+            <View style={styles.aiAvatar}>
+              <Text style={styles.aiAvatarText}>🤖</Text>
+            </View>
+            <View style={[styles.messageBubble, styles.aiBubble, styles.loadingBubble]}>
+              <ActivityIndicator size="small" color="#3157A4" />
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={styles.inputWrapper}>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder={getLabel(
+              "Ask AI assistant...",
+              "AI உதவியாளரிடம் கேட்கவும்...",
+              "AI සහායකයාගෙන් විමසන්න..."
+            )}
+            placeholderTextColor="#9CA3AF"
+            value={inputText}
+            onChangeText={setInputText}
+            editable={!isLoading}
+            multiline
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              inputText.trim() && !isLoading
+                ? styles.sendButtonActive
+                : styles.sendButtonDisabled,
+            ]}
+            onPress={handleSend}
+            disabled={!inputText.trim() || isLoading}
+          >
+            <Text style={styles.sendIcon}>➔</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: "#F7F9FC" },
+  header: {
+    paddingTop: 55,
+    paddingHorizontal: 20,
+    paddingBottom: 18,
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#F7F9FC",
-    paddingHorizontal: 24,
-    paddingTop: 70,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
-
-  logo: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#3157A4",
-    textAlign: "center",
-    marginBottom: 45,
-  },
-
-  headingContainer: {
-    marginBottom: 35,
-  },
-
-  title: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#1F2937",
-    marginBottom: 8,
-  },
-
-  subtitle: {
-    fontSize: 15,
-    color: "#6B7280",
-  },
-
-  inputContainer: {
-    marginBottom: 22,
-  },
-
-  label: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#374151",
-    marginBottom: 8,
-  },
-
-  input: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    fontSize: 16,
-    color: "#1F2937",
-  },
-
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingLeft: 16,
-    paddingRight: 14,
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 15,
-    fontSize: 16,
-    color: "#1F2937",
-  },
-
-  showText: {
-    color: "#3157A4",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  forgotContainer: {
-    alignItems: "flex-end",
-    marginBottom: 25,
-  },
-
-  forgotText: {
-    color: "#3157A4",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  loginButton: {
-    backgroundColor: "#3157A4",
-    paddingVertical: 16,
+  backButton: {
+    width: 42,
+    height: 42,
     borderRadius: 14,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
-    marginBottom: 25,
-  },
-
-  loginButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-
-  registerContainer: {
-    flexDirection: "row",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  backButtonText: { fontSize: 32, color: "#3157A4", marginTop: -3 },
+  headerTitleContainer: { flex: 1, marginLeft: 14 },
+  headerTitle: { fontSize: 18, fontWeight: "800", color: "#1F2937" },
+  headerSubtitle: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  aiIconBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#EAF0FF",
     alignItems: "center",
+    justifyContent: "center",
   },
-
-  registerText: {
-    color: "#6B7280",
-    fontSize: 14,
+  chatContainer: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
+  messageRow: { flexDirection: "row", marginBottom: 16, alignItems: "flex-start" },
+  userRow: { justifyContent: "flex-end" },
+  aiRow: { justifyContent: "flex-start" },
+  aiAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 14,
+    backgroundColor: "#EAF0FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#D0DDFB",
   },
-
-  registerLink: {
-    color: "#3157A4",
-    fontSize: 14,
-    fontWeight: "700",
+  aiAvatarText: { fontSize: 18 },
+  messageBubble: { maxWidth: "80%", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16 },
+  loadingBubble: { paddingVertical: 12, paddingHorizontal: 18 },
+  userBubble: { backgroundColor: "#3157A4", borderBottomRightRadius: 4 },
+  aiBubble: {
+    backgroundColor: "#FFFFFF",
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
+  messageText: { fontSize: 15, lineHeight: 22 },
+  userText: { color: "#FFFFFF", fontWeight: "600" },
+  aiText: { color: "#1F2937", fontWeight: "500" },
+  inputWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === "ios" ? 25 : 16,
+    paddingTop: 10,
+    backgroundColor: "#F7F9FC",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  input: { flex: 1, fontSize: 15, color: "#1F2937", maxHeight: 100, paddingTop: 8, paddingBottom: 8 },
+  sendButton: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", marginLeft: 8 },
+  sendButtonActive: { backgroundColor: "#3157A4" },
+  sendButtonDisabled: { backgroundColor: "#E5E7EB" },
+  sendIcon: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
 });

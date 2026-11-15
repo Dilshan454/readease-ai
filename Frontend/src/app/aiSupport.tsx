@@ -16,7 +16,9 @@ import { useLanguage } from "@/context/LanguageContext";
 export default function AiSupportScreen() {
   const router = useRouter();
   const { language } = useLanguage();
-  const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Explicitly defined ref type to avoid TS errors
+  const scrollViewRef = useRef<ScrollView | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [inputText, setInputText] = useState("");

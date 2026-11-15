@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import {
   View,
   Text,
@@ -40,14 +40,14 @@ export default function GameScreen() {
     return english;
   };
 
- 
   const fetchAIQuiz = async () => {
     try {
       setQuizLoading(true);
       setSelectedAnswer(null);
       setQuizSolved(false);
 
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.20.10.9:5000";
+      
       const response = await fetch(`${apiBaseUrl}/api/games/generate-quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -55,16 +55,22 @@ export default function GameScreen() {
       });
 
       const data = await response.json();
-      if (response.ok && data.quiz) {
+      if (response.ok && data.success && data.quiz) {
         setCurrentQuiz(data.quiz);
+      } else {
+        console.error("Failed to generate quiz:", data.error);
       }
     } catch (error) {
-      console.log("Quiz error:", error);
-      
+      console.log("Quiz fetch error:", error);
+      Alert.alert("Error", "Could not connect to AI quiz generator.");
     } finally {
       setQuizLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAIQuiz();
+  }, []);
 
   const handleClaimReward = () => {
     if (dailyClaimed) return;
@@ -76,7 +82,6 @@ export default function GameScreen() {
     );
   };
 
-  
   const handleQuizAnswer = (index: number) => {
     setSelectedAnswer(index);
     if (index === currentQuiz.correctIndex) {
