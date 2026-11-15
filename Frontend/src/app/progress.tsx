@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,19 +7,139 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "@/context/LanguageContext";
+
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api";
+
+interface ProgressSummary {
+  totalRecords: number;
+  completedLessons: number;
+  completionRate: number;
+  totalExercisesAttempted: number;
+  totalExercisesCompleted: number;
+  averageScore: number;
+}
+
+interface ProgressRecord {
+  _id: string;
+  lesson: {
+    title: string;
+  } | null;
+  exercisesCompleted: number;
+  exercisesAttempted: number;
+  score: number;
+  completed: boolean;
+  createdAt: string;
+}
+
+const emptySummary: ProgressSummary = {
+  totalRecords: 0,
+  completedLessons: 0,
+  completionRate: 0,
+  totalExercisesAttempted: 0,
+  totalExercisesCompleted: 0,
+  averageScore: 0,
+};
 
 export default function ProgressScreen() {
   const router = useRouter();
   const { language } = useLanguage();
 
-  const getLabel = (english: string, tamil: string, sinhala: string) => {
+  const [summary, setSummary] =
+    useState<ProgressSummary>(emptySummary);
+
+  const [history, setHistory] = useState<ProgressRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const getLabel = (
+    english: string,
+    tamil: string,
+    sinhala: string
+  ) => {
     if (language === "tamil") return tamil;
     if (language === "sinhala") return sinhala;
     return english;
   };
+
+  const fetchProgress = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = await AsyncStorage.getItem("authToken");
+
+      if (!token) {
+        setError("Please login to view your progress.");
+        return;
+      }
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      const [summaryResponse, historyResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/progress/summary`, { headers }),
+        fetch(`${API_BASE_URL}/progress`, { headers }),
+      ]);
+
+      if (!summaryResponse.ok || !historyResponse.ok) {
+        if (
+          summaryResponse.status === 401 ||
+          historyResponse.status === 401
+        ) {
+          throw new Error("Session expired. Please login again.");
+        }
+
+        throw new Error("Unable to retrieve progress data.");
+      }
+
+      const summaryData = await summaryResponse.json();
+      const historyData = await historyResponse.json();
+
+      setSummary({
+        ...emptySummary,
+        ...summaryData.summary,
+      });
+
+      setHistory(historyData.progress || []);
+    } catch (err) {
+      console.error("Progress fetch error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProgress();
+  }, [fetchProgress]);
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString();
+  };
+
+  const renderStat = (
+    emoji: string,
+    value: string | number,
+    label: string
+  ) => (
+    <View style={styles.statCard}>
+      <Text style={styles.statEmoji}>{emoji}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
 
   return (
     <ScrollView
@@ -26,7 +147,6 @@ export default function ProgressScreen() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
@@ -40,105 +160,161 @@ export default function ProgressScreen() {
         >
           <Text style={styles.backButtonText}>‹</Text>
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>
           {getLabel("Your Progress", "உங்கள் முன்னேற்றம்", "ඔබේ ප්‍රගතිය")}
         </Text>
-        <View style={{ width: 36 }} />
+
+        <TouchableOpacity
+          onPress={fetchProgress}
+          style={styles.refreshButton}
+        >
+          <Text style={styles.refreshText}>↻</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Main Overview Card */}
-      <View style={styles.overviewCard}>
-        <Text style={styles.overviewTitle}>
-          {getLabel("Overall Completion", "ஒட்டுமொத்த நிறைவு", "සමස්ත ප්‍රගතිය")}
-        </Text>
-        <Text style={styles.overviewPercentage}>35%</Text>
-        <View style={styles.progressBarBackground}>
-          <View style={styles.progressBarFill} />
-        </View>
-        <Text style={styles.overviewFooter}>
-          {getLabel(
-            "You are making steady progress this week!",
-            "இந்த வாரம் நீங்கள் சீரான முன்னேற்றம் காண்கிறீர்கள்!",
-            "මෙම සතියේ ඔබ ක්‍රමානුකූල ප්‍රගතියක් ලබා ඇත!"
-          )}
-        </Text>
-      </View>
-
-      {/* Stats Grid */}
-      <Text style={styles.sectionTitle}>
-        {getLabel("Key Statistics", "முக்கிய புள்ளிவிவரங்கள்", "ප්‍රධාන සංඛ්‍යාලේඛන")}
-      </Text>
-
-      <View style={styles.statsGrid}>
-        {/* Stat 1: Reading Accuracy */}
-        <View style={styles.statCard}>
-          <Text style={styles.statEmoji}>🎯</Text>
-          <Text style={styles.statValue}>88%</Text>
-          <Text style={styles.statLabel}>
-            {getLabel("Reading Accuracy", "வாசிப்புத் துல்லியம்", "කියවීමේ නිරවද්‍යතාව")}
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#3157A4" />
+          <Text style={styles.messageText}>
+            Loading your progress...
           </Text>
         </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchProgress}
+          >
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <View style={styles.overviewCard}>
+            <Text style={styles.overviewTitle}>
+              {getLabel(
+                "Overall Completion",
+                "மொத்த நிறைவு",
+                "සමස්ත සම්පූර්ණත්වය"
+              )}
+            </Text>
 
-        {/* Stat 2: Words Learned */}
-        <View style={styles.statCard}>
-          <Text style={styles.statEmoji}>📚</Text>
-          <Text style={styles.statValue}>124</Text>
-          <Text style={styles.statLabel}>
-            {getLabel("Words Learned", "கற்ற சொற்கள்", "ඉගෙනගත් වචන")}
+            <Text style={styles.overviewPercentage}>
+              {summary.completionRate}%
+            </Text>
+
+            <View style={styles.progressBarBackground}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: `${Math.min(
+                      100,
+                      Math.max(0, summary.completionRate)
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+
+            <Text style={styles.overviewFooter}>
+              {summary.completedLessons} completed out of{" "}
+              {summary.totalRecords} progress records
+            </Text>
+          </View>
+
+          <Text style={styles.sectionTitle}>
+            {getLabel(
+              "Key Statistics",
+              "முக்கிய புள்ளிவிவரங்கள்",
+              "ප්‍රධාන සංඛ්‍යාලේඛන"
+            )}
           </Text>
-        </View>
 
-        {/* Stat 3: Practice Streak */}
-        <View style={styles.statCard}>
-          <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={styles.statValue}>5 Days</Text>
-          <Text style={styles.statLabel}>
-            {getLabel("Practice Streak", "தொடர்ச்சி நாட்கள்", "අඛණ්ඩ දින සංඛ්‍යාව")}
+          <View style={styles.statsGrid}>
+            {renderStat(
+              "📚",
+              summary.completedLessons,
+              "Completed Lessons"
+            )}
+
+            {renderStat(
+              "🎯",
+              `${summary.averageScore}%`,
+              "Average Score"
+            )}
+
+            {renderStat(
+              "✏️",
+              summary.totalExercisesCompleted,
+              "Exercises Completed"
+            )}
+
+            {renderStat(
+              "📝",
+              summary.totalExercisesAttempted,
+              "Exercises Attempted"
+            )}
+          </View>
+
+          <Text style={styles.sectionTitle}>
+            {getLabel(
+              "Recent Activity",
+              "சமீபத்திய செயல்பாடு",
+              "මෑතකාලීන ක්‍රියාකාරකම්"
+            )}
           </Text>
-        </View>
 
-        {/* Stat 4: Time Spent */}
-        <View style={styles.statCard}>
-          <Text style={styles.statEmoji}>⏱️</Text>
-          <Text style={styles.statValue}>2.5 Hrs</Text>
-          <Text style={styles.statLabel}>
-            {getLabel("Time Spent", "செலவிட்ட நேரம்", "ගත කළ කාලය")}
-          </Text>
-        </View>
-      </View>
+          <View style={styles.activityCard}>
+            {history.length === 0 ? (
+              <Text style={styles.emptyText}>
+                No progress records yet. Start a lesson to track your
+                learning progress!
+              </Text>
+            ) : (
+              history.map((record) => (
+                <View key={record._id} style={styles.historyItem}>
+                  <View style={styles.historyInfo}>
+                    <Text style={styles.lessonTitle}>
+                      {record.lesson?.title || "Learning Activity"}
+                    </Text>
 
-      {/* Weekly Breakdown */}
-      <Text style={styles.sectionTitle}>
-        {getLabel("Weekly Activity", "வாராந்திர செயல்பாடு", "සාමාන්‍ය සතිපතා ක්‍රියාකාරකම")}
-      </Text>
+                    <Text style={styles.historyDate}>
+                      {formatDate(record.createdAt)}
+                    </Text>
 
-      <View style={styles.activityCard}>
-        <View style={styles.activityRow}>
-          <Text style={styles.dayText}>Mon</Text>
-          <View style={styles.barBg}><View style={[styles.barFill, { width: "70%" }]} /></View>
-          <Text style={styles.scoreText}>25m</Text>
-        </View>
-        <View style={styles.activityRow}>
-          <Text style={styles.dayText}>Tue</Text>
-          <View style={styles.barBg}><View style={[styles.barFill, { width: "90%" }]} /></View>
-          <Text style={styles.scoreText}>40m</Text>
-        </View>
-        <View style={styles.activityRow}>
-          <Text style={styles.dayText}>Wed</Text>
-          <View style={styles.barBg}><View style={[styles.barFill, { width: "40%" }]} /></View>
-          <Text style={styles.scoreText}>15m</Text>
-        </View>
-        <View style={styles.activityRow}>
-          <Text style={styles.dayText}>Thu</Text>
-          <View style={styles.barBg}><View style={[styles.barFill, { width: "80%" }]} /></View>
-          <Text style={styles.scoreText}>35m</Text>
-        </View>
-        <View style={styles.activityRow}>
-          <Text style={styles.dayText}>Fri</Text>
-          <View style={styles.barBg}><View style={[styles.barFill, { width: "60%" }]} /></View>
-          <Text style={styles.scoreText}>20m</Text>
-        </View>
-      </View>
+                    <Text style={styles.historyDetails}>
+                      {record.exercisesCompleted}/
+                      {record.exercisesAttempted} exercises completed
+                    </Text>
+                  </View>
+
+                  <View style={styles.historyRight}>
+                    <Text style={styles.historyScore}>
+                      {record.score}%
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.statusText,
+                        {
+                          color: record.completed
+                            ? "#16A34A"
+                            : "#D97706",
+                        },
+                      ]}
+                    >
+                      {record.completed ? "Completed" : "In Progress"}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </>
+      )}
 
       <View style={styles.bottomSpace} />
     </ScrollView>
@@ -170,14 +346,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backButtonText: {
-    fontSize: 26,
+    fontSize: 30,
     color: "#334155",
-    marginTop: -2,
+    marginTop: -3,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "800",
     color: "#1F2937",
+  },
+  refreshButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  refreshText: {
+    fontSize: 25,
+    color: "#3157A4",
   },
   overviewCard: {
     backgroundColor: "#3157A4",
@@ -210,7 +398,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   progressBarFill: {
-    width: "35%",
     height: "100%",
     backgroundColor: "#FFFFFF",
     borderRadius: 6,
@@ -263,36 +450,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8ECF2",
   },
-  activityRow: {
+  historyItem: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E8ECF2",
   },
-  dayText: {
-    width: 35,
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#4B5563",
-  },
-  barBg: {
+  historyInfo: {
     flex: 1,
-    height: 8,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 4,
-    marginHorizontal: 10,
-    overflow: "hidden",
+    paddingRight: 10,
   },
-  barFill: {
-    height: "100%",
-    backgroundColor: "#4F46E5",
-    borderRadius: 4,
+  lessonTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 5,
   },
-  scoreText: {
-    width: 35,
+  historyDate: {
     fontSize: 12,
-    fontWeight: "600",
     color: "#6B7280",
-    textAlign: "right",
+    marginBottom: 4,
+  },
+  historyDetails: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  historyRight: {
+    alignItems: "flex-end",
+  },
+  historyScore: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#3157A4",
+    marginBottom: 4,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  centerContainer: {
+    padding: 35,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    marginTop: 20,
+  },
+  messageText: {
+    marginTop: 12,
+    color: "#6B7280",
+  },
+  errorText: {
+    color: "#DC2626",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  retryButton: {
+    backgroundColor: "#3157A4",
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  emptyText: {
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 22,
   },
   bottomSpace: {
     height: 20,

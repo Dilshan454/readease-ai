@@ -1,4 +1,8 @@
-import React, { useState, useRef } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = `${API_BASE_URL}/auth/login`;
+
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -74,9 +78,11 @@ export default function AiSupportScreen() {
 
       const data = await response.json();
 
-      let aiResponseText = "";
-      if (data && data.reply) {
-        aiResponseText = data.reply;
+      if (response.ok) {
+        await AsyncStorage.setItem("authToken", data.token);
+        console.log("Login Success Data:", data);
+        Alert.alert("Success", "Login Successful!");
+        router.push("/home"); 
       } else {
         aiResponseText = getLabel(
           "Sorry, I couldn't process a response right now.",
