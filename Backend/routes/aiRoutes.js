@@ -18,8 +18,7 @@ router.post("/generate-exercises", protect, generateExercises);
 router.post("/generate-summary", protect, generateSummary);
 router.post("/generate-conversation", protect, generateConversation);
 
-// Added AI Support Chat Route
-router.post("/chat", protect, async (req, res) => {
+router.post("/chat", async (req, res) => {
   try {
     const { message, language } = req.body;
 
@@ -33,15 +32,15 @@ router.post("/chat", protect, async (req, res) => {
     User question: "${message}"`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
 
-    const reply = response.text();
+    const reply = response.text || "No response generated";
     return res.status(200).json({ success: true, reply });
   } catch (error) {
     console.error("Gemini AI Chat Error:", error);
-    return res.status(500).json({ success: false, error: "Failed to fetch response from AI" });
+    return res.status(500).json({ success: false, error: error.message || "Failed to fetch response from AI" });
   }
 });
 
