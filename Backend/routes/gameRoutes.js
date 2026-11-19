@@ -1,3 +1,13 @@
+const express = require("express");
+const { GoogleGenAI } = require("@google/genai");
+
+const router = express.Router();
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
+
 router.post("/generate-quiz", async (req, res) => {
   try {
     const { language } = req.body;
@@ -40,3 +50,5 @@ router.post("/generate-quiz", async (req, res) => {
     return res.status(500).json({ success: false, error: error.message || "Failed to generate quiz" });
   }
 });
+
+module.exports = router;
