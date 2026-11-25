@@ -9,9 +9,9 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
+import { API_URL } from "@/constants/api";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const REGISTER_API_URL = `${API_BASE_URL}/auth/register`;
+const REGISTER_API_URL = `${API_URL}/auth/register`;
 
 export default function RegisterScreen() {
   const router = useRouter();

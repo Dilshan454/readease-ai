@@ -1,322 +1,244 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-const API_URL = `${API_BASE_URL}/auth/login`;
-
 import React, { useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useLanguage } from "@/context/LanguageContext";
+import { API_URL } from "@/constants/api";   
 
-export default function AiSupportScreen() {
+export default function LoginScreen() {
   const router = useRouter();
-  const { language } = useLanguage();
-  const scrollViewRef = useRef<ScrollView | null>(null);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [inputText, setInputText] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const [messages, setMessages] = useState([
-    {
-      id: "1",
-      sender: "ai",
-      text:
-        language === "tamil"
-          ? "வணக்கம்! நான் உங்கள் AI உதவியாளன். இன்றைக்கு என்ன படிக்க உதவ வேண்டும்?"
-          : language === "sinhala"
-          ? "ආයුබෝවන්! මම ඔබේ AI සහායකයා. අද ඔබට මොනවාද කියවන්න උදව් ඕනේ?"
-          : "Hello! I am your AI assistant. How can I help with your reading today?",
-    },
-  ]);
+  const handleLogin = async () => {
+    setErrorMsg("");
 
-  const getLabel = (english: string, tamil: string, sinhala: string) => {
-    if (language === "tamil") return tamil;
-    if (language === "sinhala") return sinhala;
-    return english;
-  };
+    if (!email.trim || !password) {
+      setErrorMsg("Please enter email and password");
+      return;
+    }
+    if (!email.includes("@") || !email.includes(".")) {
+      setErrorMsg("Please enter a valid email address");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg("Password must be at least 6 characters");
+      return;
+    }
 
-  const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
-
-    const userText = inputText.trim();
-    const userMessage = {
-      id: Date.now().toString(),
-      sender: "user",
-      text: userText,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText("");
-    setIsLoading(true);
-
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setLoading(true);
 
     try {
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.20.10.9:5000";
-      
-      const response = await fetch(`${apiBaseUrl}/api/ai/chat`, {
+      const response = await fetch(`${API_URL}/auth/login`, {  
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userText,
-          language: language,
+          email: email.trim().toLowerCase(),
+          password: password,
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
+      if (response.ok && data.token) {
         await AsyncStorage.setItem("authToken", data.token);
-        console.log("Login Success Data:", data);
-        Alert.alert("Success", "Login Successful!");
-        router.push("/home"); 
+        await AsyncStorage.setItem("userEmail", email.trim().toLowerCase());
+        if (data.user?.name) {
+          await AsyncStorage.setItem("userName", data.user.name);
+        }
+        router.replace("/home");
       } else {
-        aiResponseText = getLabel(
-          "Sorry, I couldn't process a response right now.",
-          "மன்னிக்கவும், சரியான பதிலை பெற முடியவில்லை.",
-          "සමාවෙන්න, නිසි පිළිතුරක් ලබා ගැනීමට නොහැකි විය."
-        );
+        setErrorMsg(data.message || "Invalid email or password");
       }
-
-      const aiReply = {
-        id: (Date.now() + 1).toString(),
-        sender: "ai",
-        text: aiResponseText,
-      };
-
-      setMessages((prev) => [...prev, aiReply]);
     } catch (error) {
-      console.error("Real AI Chat Fetch Error:", error);
-
-      const errorReply = {
-        id: (Date.now() + 1).toString(),
-        sender: "ai",
-        text: getLabel(
-          "Unable to connect to the server. Please check your network connection.",
-          "சேவையகத்துடன் இணைப்பதில் பிழை ஏற்பட்டது. தயவுசெய்து உங்கள் பிணைய இணைப்பைச் சரிபார்க்கவும்.",
-          "සර්වර් එක සමඟ සම්බන්ධ වීමේ දෝෂයක් ඇත. කරුණාකර ජාල සබඳතාව පරීක්ෂා කරන්න."
-        ),
-      };
-
-      setMessages((prev) => [...prev, errorReply]);
+      console.log("Login Error:", error);
+      setErrorMsg("Cannot connect to backend server. Is backend running?");
     } finally {
-      setIsLoading(false);
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setLoading(false);
     }
   };
 
+
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.push("/");
-            }
-          }}
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>‹</Text>
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>
-            {getLabel("AI Support Assistant", "AI உதவி", "AI සහායකයා")}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            {getLabel("Ask reading questions & simplify text", "கேள்விகளைக் கேளுங்கள்", "කියවීම සහ තේරුම් ගැනීමට උදව් අසන්න")}
-          </Text>
-        </View>
-        <View style={styles.aiIconBadge}>
-          <Text style={{ fontSize: 18 }}>🤖</Text>
-        </View>
-      </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Logo */}
+        <Text style={styles.logo}>ReadEase</Text>
 
-      <ScrollView
-        ref={scrollViewRef}
-        contentContainerStyle={styles.chatContainer}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-      >
-        {messages.map((msg) => (
-          <View
-            key={msg.id}
-            style={[
-              styles.messageRow,
-              msg.sender === "user" ? styles.userRow : styles.aiRow,
-            ]}
-          >
-            {msg.sender === "ai" && (
-              <View style={styles.aiAvatar}>
-                <Text style={styles.aiAvatarText}>🤖</Text>
-              </View>
-            )}
+        {/* Title */}
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.subtitle}>Continue your learning journey</Text>
 
-            <View
-              style={[
-                styles.messageBubble,
-                msg.sender === "user" ? styles.userBubble : styles.aiBubble,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.messageText,
-                  msg.sender === "user" ? styles.userText : styles.aiText,
-                ]}
-              >
-                {msg.text}
-              </Text>
-            </View>
-          </View>
-        ))}
-
-        {isLoading && (
-          <View style={[styles.messageRow, styles.aiRow]}>
-            <View style={styles.aiAvatar}>
-              <Text style={styles.aiAvatarText}>🤖</Text>
-            </View>
-            <View style={[styles.messageBubble, styles.aiBubble, styles.loadingBubble]}>
-              <ActivityIndicator size="small" color="#3157A4" />
-            </View>
+        {/* Error box - only shows if errorMsg is not empty */}
+        {errorMsg !== "" && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         )}
-      </ScrollView>
 
-      <View style={styles.inputWrapper}>
-        <View style={styles.inputContainer}>
+        {/* Email input */}
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your email"
+          placeholderTextColor="#9CA3AF"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none" 
+          autoCorrect={false}
+          editable={!loading}
+        />
+
+        {/* Password input */}
+        <Text style={styles.label}>Password</Text>
+        <View style={styles.passwordContainer}>
           <TextInput
-            style={styles.input}
-            placeholder={getLabel(
-              "Ask AI assistant...",
-              "AI உதவியாளரிடம் கேட்கவும்...",
-              "AI සහායකයාගෙන් විමසන්න..."
-            )}
+            style={styles.passwordInput}
+            placeholder="Enter your password"
             placeholderTextColor="#9CA3AF"
-            value={inputText}
-            onChangeText={setInputText}
-            editable={!isLoading}
-            multiline
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword} 
+            editable={!loading}
           />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              inputText.trim() && !isLoading
-                ? styles.sendButtonActive
-                : styles.sendButtonDisabled,
-            ]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || isLoading}
-          >
-            <Text style={styles.sendIcon}>➔</Text>
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Text style={styles.showText}>{showPassword ? "Hide" : "Show"}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+
+        {/* Forgot password */}
+        <TouchableOpacity onPress={() => router.push("/forgot-password")}>
+          <Text style={styles.forgotText}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        {/* Login button */}
+        <TouchableOpacity
+          style={[styles.loginButton, loading && { opacity: 0.6 }]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.loginButtonText}>Login</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Go to Register */}
+        <View style={styles.registerContainer}>
+          <Text style={styles.registerText}>Don't have an account? </Text>
+          <TouchableOpacity onPress={() => router.push("/register")}>
+            <Text style={styles.registerLink}>Register</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Demo button */}
+        {/*<TouchableOpacity
+          style={styles.demoButton}
+          onPress={() => router.replace("/home")}
+        >
+          <Text style={styles.demoText}>Continue as Guest (Demo)</Text>
+        </TouchableOpacity>*/}
+      </ScrollView>
     </KeyboardAvoidingView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7F9FC" },
-  header: {
-    paddingTop: 55,
-    paddingHorizontal: 20,
-    paddingBottom: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7F9FC",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+  container: {
+    flexGrow: 1,
+    backgroundColor: "#F7F9FC", 
+    paddingHorizontal: 24,
+    paddingTop: 70,
+    paddingBottom: 30,
   },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+  logo: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#3157A4", 
+    textAlign: "center",
+    marginBottom: 35,
+  },
+  title: { fontSize: 30, fontWeight: "800", color: "#1F2937", marginBottom: 8 },
+  subtitle: { fontSize: 15, color: "#6B7280", marginBottom: 25 },
+  errorBox: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  errorText: { color: "#B91C1C", fontSize: 14, fontWeight: "600" },
+  label: { fontSize: 15, fontWeight: "700", color: "#374151", marginBottom: 8, marginTop: 8 },
+  input: {
     backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-  },
-  backButtonText: { fontSize: 32, color: "#3157A4", marginTop: -3 },
-  headerTitleContainer: { flex: 1, marginLeft: 14 },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: "#1F2937" },
-  headerSubtitle: { fontSize: 12, color: "#6B7280", marginTop: 2 },
-  aiIconBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: "#EAF0FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chatContainer: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
-  messageRow: { flexDirection: "row", marginBottom: 16, alignItems: "flex-start" },
-  userRow: { justifyContent: "flex-end" },
-  aiRow: { justifyContent: "flex-start" },
-  aiAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 14,
-    backgroundColor: "#EAF0FF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: "#D0DDFB",
-  },
-  aiAvatarText: { fontSize: 18 },
-  messageBubble: { maxWidth: "80%", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16 },
-  loadingBubble: { paddingVertical: 12, paddingHorizontal: 18 },
-  userBubble: { backgroundColor: "#3157A4", borderBottomRightRadius: 4 },
-  aiBubble: {
-    backgroundColor: "#FFFFFF",
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  messageText: { fontSize: 15, lineHeight: 22 },
-  userText: { color: "#FFFFFF", fontWeight: "600" },
-  aiText: { color: "#1F2937", fontWeight: "500" },
-  inputWrapper: {
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === "ios" ? 25 : 16,
-    paddingTop: 10,
-    backgroundColor: "#F7F9FC",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    paddingVertical: 15,
+    fontSize: 16,
+    color: "#1F2937",
+    marginBottom: 10,
   },
-  inputContainer: {
+  passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
     borderWidth: 1,
     borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingLeft: 16,
+    paddingRight: 14,
+    marginBottom: 10,
   },
-  input: { flex: 1, fontSize: 15, color: "#1F2937", maxHeight: 100, paddingTop: 8, paddingBottom: 8 },
-  sendButton: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", marginLeft: 8 },
-  sendButtonActive: { backgroundColor: "#3157A4" },
-  sendButtonDisabled: { backgroundColor: "#E5E7EB" },
-  sendIcon: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  passwordInput: { flex: 1, paddingVertical: 15, fontSize: 16, color: "#1F2937" },
+  showText: { color: "#3157A4", fontSize: 14, fontWeight: "700" },
+  forgotText: {
+    color: "#3157A4",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "right",
+    marginBottom: 25,
+    marginTop: 8,
+  },
+  loginButton: {
+    backgroundColor: "#3157A4",
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  loginButtonText: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
+  registerContainer: { flexDirection: "row", justifyContent: "center" },
+  registerText: { color: "#6B7280", fontSize: 14 },
+  registerLink: { color: "#3157A4", fontSize: 14, fontWeight: "700" },
+  demoButton: {
+    marginTop: 28,
+    borderWidth: 1,
+    borderColor: "#3157A4",
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  demoText: { color: "#3157A4", fontWeight: "700", fontSize: 14 },
 });
