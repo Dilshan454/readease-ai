@@ -1,11 +1,23 @@
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Use a real model name
+const MODEL_NAME = "gemini-1.5-flash";
+
+async function generateText(prompt) {
+  try {
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (error) {
+    console.error("Gemini Error:", error);
+    throw error;
+  }
+}
 
 const simplifyText = async (text) => {
-    const prompt = `
+  const prompt = `
 Simplify the following text for a person with dyslexia.
 
 Rules:
@@ -18,117 +30,63 @@ Rules:
 Text:
 ${text}
 `;
-
-    const interaction = await ai.interactions.create({
-        model: "gemini-3.8-flash",
-        input: prompt
-    });
-
-    return interaction.output_text;
+  return generateText(prompt);
 };
 
 const generateExercises = async (text) => {
-    const prompt = `
+  const prompt = `
 Create 5 simple multiple-choice questions based only on the following text.
 
 Rules:
-- Questions must be suitable for a learner with dyslexia.
+- Suitable for a learner with dyslexia.
 - Use simple English.
 - Keep questions short and clear.
-- Each question must have exactly 4 options.
-- Provide only one correct answer.
-- Do not add information that is not in the text.
-
-Return the result as a JSON array using this exact format:
+- Exactly 4 options for each question.
+- Only one correct answer.
+- Return ONLY a valid JSON array like this:
 
 [
-    {
-        "question": "Question here",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
-        "correctAnswer": "Correct option here"
-    }
+  {
+    "question": "Question here",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "Correct option here"
+  }
 ]
 
 Text:
 ${text}
 `;
 
-    const interaction = await ai.interactions.create({
-        model: "gemini-3.8-flash",
-        input: prompt
-    });
-
-    const output = interaction.output_text;
-
-    const cleanedOutput = output
-        .replace("```json", "")
-        .replace("```", "")
-        .trim();
-
-    return JSON.parse(cleanedOutput);
+  const output = await generateText(prompt);
+  const cleaned = output.replace(/```json|```/g, "").trim();
+  return JSON.parse(cleaned);
 };
 
 const generateSummary = async (text) => {
-    const prompt = `
+  const prompt = `
 Create a short and simple summary of the following text for a person with dyslexia.
-
-Rules:
-- Use simple English words.
-- Use short sentences.
-- Include only the main ideas.
-- Keep the original meaning.
-- Do not add new information.
-- Avoid difficult words when possible.
-- Make the summary easy to read and understand.
+Use simple words and short sentences. Keep only the main ideas.
 
 Text:
 ${text}
 `;
-
-    const interaction = await ai.interactions.create({
-        model: "gemini-3.8-flash",
-        input: prompt
-    });
-
-    return interaction.output_text;
+  return generateText(prompt);
 };
 
 const generateConversation = async (text) => {
-    const prompt = `
-Create a simple educational conversation based only on the following text.
-
-Rules:
-- Create a conversation between a teacher and a learner.
-- Use simple English.
-- Keep sentences short and clear.
-- Make it suitable for a person with dyslexia.
-- Use 6 to 8 dialogue lines.
-- Cover the main ideas from the text.
-- Do not add new information.
-- Make the conversation easy to read and understand.
-
-Return the conversation in this format:
-
-Teacher: ...
-Learner: ...
-Teacher: ...
-Learner: ...
+  const prompt = `
+Create a simple educational conversation between a Teacher and a Learner based only on the following text.
+Use simple English and short sentences. Suitable for someone with dyslexia.
 
 Text:
 ${text}
 `;
-
-    const interaction = await ai.interactions.create({
-        model: "gemini-3.8-flash",
-        input: prompt
-    });
-
-    return interaction.output_text;
+  return generateText(prompt);
 };
 
 module.exports = {
-    simplifyText,
-    generateExercises,
-    generateSummary,
-    generateConversation
+  simplifyText,
+  generateExercises,
+  generateSummary,
+  generateConversation,
 };

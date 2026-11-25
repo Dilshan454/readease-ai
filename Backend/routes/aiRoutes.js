@@ -26,21 +26,25 @@ router.post("/chat", async (req, res) => {
       return res.status(400).json({ success: false, error: "Message is required" });
     }
 
+    const { GoogleGenerativeAI } = require("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
     const prompt = `You are ReadEase AI, a supportive and encouraging learning assistant for students with dyslexia.
-    Reply to the user's message in ${language || "english"}.
-    Keep your explanations short, simple, clear, and very easy to read. Avoid complicated words.
-    User question: "${message}"`;
+Reply to the user's message in ${language || "english"}.
+Keep your explanations short, simple, clear, and very easy to read. Avoid complicated words.
+User question: "${message}"`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: prompt,
-    });
+    const result = await model.generateContent(prompt);
+    const reply = result.response.text() || "No response generated";
 
-    const reply = response.text || "No response generated";
     return res.status(200).json({ success: true, reply });
   } catch (error) {
     console.error("Gemini AI Chat Error:", error);
-    return res.status(500).json({ success: false, error: error.message || "Failed to fetch response from AI" });
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch response from AI",
+    });
   }
 });
 
