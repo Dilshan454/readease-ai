@@ -32,8 +32,18 @@ export default function RegisterScreen() {
 
 
   const handleRegister = async () => {
-    if (!fullName || !email || !password || !confirmPassword) {
+    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
       Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
+
+    if (!email.includes("@") || !email.includes(".")) {
+      Alert.alert("Error", "Please enter a valid email address");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters");
       return;
     }
 
@@ -49,13 +59,13 @@ export default function RegisterScreen() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: fullName,
-          email: email,
+          name: fullName.trim(),
+          email: email.trim().toLowerCase(),
           password: password,
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (response.ok) {
         Alert.alert("Success", "Account created successfully!");
