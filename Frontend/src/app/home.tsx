@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function HomeScreen() {
@@ -16,11 +17,30 @@ export default function HomeScreen() {
   const { language } = useLanguage();
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
-  // Auth & Profile States (ප්‍රථමයෙන් හිස්ව පවතියි)
+  // Auth & Profile States
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const name = await AsyncStorage.getItem("userName");
+        const email = await AsyncStorage.getItem("userEmail");
+
+        if (token) {
+          setIsLoggedIn(true);
+          if (name) setUserName(name);
+          if (email) setUserEmail(email);
+        }
+      } catch (e) {
+        console.log("Failed to load user", e);
+      }
+    };
+    loadUser();
+  }, []);
 
   const getGreeting = () => {
     if (language === "tamil") {
@@ -330,7 +350,12 @@ export default function HomeScreen() {
 
                 <TouchableOpacity
                   style={[styles.actionButton, { backgroundColor: "#EF4444", marginBottom: 10 }]}
-                  onPress={() => {
+                  onPress={async () => {
+                    await AsyncStorage.multiRemove([
+                      "authToken",
+                      "userName",
+                      "userEmail",
+                    ]);
                     setIsLoggedIn(false);
                     setUserName("");
                     setUserEmail("");
@@ -359,8 +384,8 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={[styles.actionButton, { backgroundColor: "#10B981", marginBottom: 10 }]}
                   onPress={() => {
-                    setIsLoggedIn(true);
-                    setIsEditing(true); // Login වූ වහාම විස්තර ටයිප් කිරීමට Edit mode එක පෙන්වයි
+                    setIsProfileModalVisible(false);
+                    router.push("/login");
                   }}
                 >
                   <Text style={styles.actionButtonText}>
