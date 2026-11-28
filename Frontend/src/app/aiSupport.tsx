@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
+import { API_BASE_URL } from "@/constants/api";
 
 export default function AiSupportScreen() {
   const router = useRouter();
@@ -61,9 +62,7 @@ export default function AiSupportScreen() {
     }, 100);
 
     try {
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.20.10.9:5000";
-      
-      const response = await fetch(`${apiBaseUrl}/api/ai/chat`, {
+      const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

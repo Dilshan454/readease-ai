@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/context/LanguageContext";
+import { API_BASE_URL } from "@/constants/api";
 
 export default function GameScreen() {
   const router = useRouter();
@@ -46,9 +47,7 @@ export default function GameScreen() {
       setSelectedAnswer(null);
       setQuizSolved(false);
 
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://172.20.10.9:5000";
-      
-      const response = await fetch(`${apiBaseUrl}/api/games/generate-quiz`, {
+      const response = await fetch(`${API_BASE_URL}/api/games/generate-quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language }),

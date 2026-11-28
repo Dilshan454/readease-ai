@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import * as Speech from "expo-speech";
 import * as DocumentPicker from "expo-document-picker";
 import { useLanguage } from "@/context/LanguageContext";
+import { API_BASE_URL } from "@/constants/api";
 
 export default function ReadingScreen() {
   const router = useRouter();
@@ -96,10 +97,7 @@ export default function ReadingScreen() {
         type: file.mimeType || "application/octet-stream",
       } as any);
 
-      // For a physical phone, set EXPO_PUBLIC_API_URL to your computer's LAN IP,
-      // for example http://192.168.1.10:5000. Android emulator may use 10.0.2.2.
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
-      const response = await fetch(`${apiBaseUrl}/api/text-extraction/extract`, {
+      const response = await fetch(`${API_BASE_URL}/api/text-extraction/extract`, {
         method: "POST",
         body: formData,
       });
@@ -137,9 +135,7 @@ export default function ReadingScreen() {
 
     try {
       setIsSummarizing(true);
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
-      
-      const response = await fetch(`${apiBaseUrl}/api/documents/summarize`, {
+      const response = await fetch(`${API_BASE_URL}/api/documents/summarize`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
