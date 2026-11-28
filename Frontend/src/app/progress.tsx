@@ -12,9 +12,7 @@ import {
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "@/context/LanguageContext";
-
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api";
+import { API_URL, getAuthHeaders } from "@/constants/api";
 
 interface ProgressSummary {
   totalRecords: number;
@@ -79,14 +77,11 @@ export default function ProgressScreen() {
         return;
       }
 
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      };
+      const headers = await getAuthHeaders();
 
       const [summaryResponse, historyResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/progress/summary`, { headers }),
-        fetch(`${API_BASE_URL}/progress`, { headers }),
+        fetch(`${API_URL}/progress/summary`, { headers }),
+        fetch(`${API_URL}/progress`, { headers }),
       ]);
 
       if (!summaryResponse.ok || !historyResponse.ok) {

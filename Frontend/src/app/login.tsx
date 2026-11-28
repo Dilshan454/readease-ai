@@ -26,7 +26,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setErrorMsg("");
 
-    if (!email.trim || !password) {
+    if (!email.trim() || !password) {
       setErrorMsg("Please enter email and password");
       return;
     }
@@ -124,10 +124,10 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Forgot password */}
-        <TouchableOpacity onPress={() => router.push("/forgot-password")}>
+        {/* Forgot password - disabled until route exists */}
+        {/* <TouchableOpacity onPress={() => router.push("/forgot-password")}>
           <Text style={styles.forgotText}>Forgot Password?</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Login button */}
         <TouchableOpacity
